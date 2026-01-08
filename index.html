@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>农历新年工作日倒计时（秒级）</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Microsoft YaHei', 'SimHei', sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #fff8f0 0%, #ffe8d8 100%); /* 新年暖色系渐变 */
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            position: relative; /* 为背景字定位做准备 */
+            overflow-x: hidden;
+        }
+        
+        /* 發字背景装饰 - 核心新年元素 */
+        body::before {
+            content: '發';
+            position: fixed;
+            top: -50px;
+            right: -50px;
+            font-size: 300px;
+            font-weight: bold;
+            color: rgba(255, 215, 0, 0.15); /* 金色半透明 */
+            z-index: -1; /* 放在内容下方 */
+            transform: rotate(15deg); /* 轻微旋转更自然 */
+            pointer-events: none; /* 不影响交互 */
+        }
+        
+        body::after {
+            content: '發';
+            position: fixed;
+            bottom: -80px;
+            left: -80px;
+            font-size: 350px;
+            font-weight: bold;
+            color: rgba(220, 20, 60, 0.1); /* 红色半透明 */
+            z-index: -1;
+            transform: rotate(-10deg);
+            pointer-events: none;
+        }
+        
+         /* 新增：右侧財字背景装饰 */
+         body .fortune::before {
+            content: '財';
+            position: fixed;
+            top: 50%;
+            right: -60px;
+            font-size: 320px;
+            font-weight: bold;
+            color: rgba(255, 165, 0, 0.12); /* 橙色半透明，与發字区分 */
+            z-index: -1;
+            transform: translateY(-50%) rotate(8deg); /* 垂直居中并轻微旋转 */
+            pointer-events: none;
+        }
+        
+        .countdown-container {
+            background: rgba(255, 255, 255, 0.95); /* 半透明白色背景 */
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(220, 20, 60, 0.15); /* 新年红阴影 */
+            padding: 40px;
+            text-align: center;
+            /* 整体容器宽度：从1000px减少50px → 950px */
+            max-width: 950px;
+            width: 100%;
+            position: relative;
+            border: 1px solid rgba(255, 215, 0, 0.3); /* 金色边框 */
+        }
+        
+        /* 顶部新年装饰线 */
+        .countdown-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 8px;
+            background: linear-gradient(90deg, #dc143c, #ffd700, #dc143c); /* 红金渐变 */
+            border-radius: 20px 20px 0 0;
+        }
+        
+        h1 {
+            color: #dc143c; /* 新年红 */
+            margin-bottom: 10px;
+            font-size: 2.8rem;
+            text-shadow: 0 2px 4px rgba(220, 20, 60, 0.2);
+        }
+        
+        .year-info {
+            color: #b8860b; /* 暗金色 */
+            margin-bottom: 20px;
+            font-size: 1.2rem;
+            font-weight: 500;
+        }
+        
+        /* 单休/双休切换样式 */
+        .mode-switch {
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            font-size: 1.1rem;
+            color: #8b4513; /* 棕红色 */
+        }
+        
+        .mode-switch label {
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .mode-switch input[type="radio"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #dc143c; /* 新年红选中色 */
+        }
+        
+        /* 目标日期输入区域样式 */
+        .target-date-section {
+            margin-bottom: 25px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        
+        .target-date-section label {
+            color: #8b4513;
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+        
+        .target-date-section input[type="date"] {
+            padding: 10px 15px;
+            font-size: 1.1rem;
+            border: 2px solid rgba(255, 215, 0, 0.5);
+            border-radius: 10px;
+            background: linear-gradient(180deg, #fff9f0 0%, #fff0e6 100%);
+            color: #dc143c;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .target-date-section input[type="date"]:hover {
+            border-color: #ffd700;
+            box-shadow: 0 2px 8px rgba(255, 215, 0, 0.3);
+        }
+        
+        .target-date-section input[type="date"]:focus {
+            outline: none;
+            border-color: #dc143c;
+            box-shadow: 0 2px 12px rgba(220, 20, 60, 0.2);
+        }
+        
+        .reset-btn {
+            padding: 10px 18px;
+            font-size: 0.95rem;
+            border: 2px solid rgba(220, 20, 60, 0.3);
+            border-radius: 10px;
+            background: linear-gradient(180deg, #fff0e6 0%, #ffe8d8 100%);
+            color: #dc143c;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .reset-btn:hover {
+            background: linear-gradient(180deg, #dc143c 0%, #b22222 100%);
+            color: #fff;
+            border-color: #dc143c;
+        }
+        
+        .countdown-card {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin: 30px 0;
+        }
+        
+        /* 所有统计卡片统一固定宽度，避免布局抖动 */
+        .countdown-item {
+            background: linear-gradient(180deg, #fff9f0 0%, #fff0e6 100%); /* 暖色系卡片背景 */
+            border-radius: 15px;
+            padding: 20px 15px;
+            width: 140px; /* 固定宽度 */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(220, 20, 60, 0.08);
+            border: 1px solid rgba(255, 215, 0, 0.2);
+        }
+        
+        .countdown-number {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #dc143c; /* 新年红数字 */
+            margin: 10px 0;
+            line-height: 1; /* 固定行高 */
+            text-shadow: 0 1px 2px rgba(220, 20, 60, 0.1);
+        }
+        
+        /* 时分秒倒计时卡片样式 - 调整宽度 */
+        .countdown-item.time {
+            /* 从320px减少50px → 270px */
+            width: 270px; 
+            background: linear-gradient(180deg, #fffdf0 0%, #fff8e8 100%);
+            border-color: rgba(255, 215, 0, 0.4);
+        }
+        
+        /* 下班倒计时卡片样式 */
+        .countdown-item.off-work {
+            width: 200px;
+            background: linear-gradient(180deg, #f0fff8 0%, #e6fff0 100%);
+            border-color: rgba(0, 128, 0, 0.2);
+        }
+        
+        .countdown-item.off-work .countdown-number {
+            color: #2e8b57; /* 海绿色数字 */
+            font-size: 2.2rem;
+        }
+        
+        .countdown-item.off-work .countdown-number.finished {
+            color: #27ae60; /* 绿色对勾 */
+            font-size: 3rem;
+        }
+        
+        .countdown-item.time .countdown-number {
+            font-size: 2.5rem;
+            letter-spacing: 1px;
+            font-family: 'Consolas', 'Courier New', monospace; /* 等宽字体 */
+            color: #b8860b; /* 金色数字 */
+            width: 100%;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .countdown-label {
+            color: #8b4513; /* 棕红色标签 */
+            font-size: 1rem;
+            line-height: 1.2;
+            white-space: nowrap;
+            font-weight: 500;
+        }
+        
+        .countdown-item.off-work .countdown-label {
+            color: #2e8b57; /* 海绿色标签 */
+        }
+        
+        .note {
+            margin-top: 30px;
+            color: #a0522d; /* 土红色 */
+            font-size: 0.9rem;
+            line-height: 1.6;
+            background: rgba(255, 248, 240, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 3px solid #ffd700;
+        }
+        
+        .update-time {
+            margin-top: 15px;
+            color: #b8860b;
+            font-size: 0.8rem;
+        }
+
+        /* 响应式适配 */
+        @media (max-width: 768px) {
+            body .fortune::before {
+                font-size: 220px;
+                right: -40px;
+            }
+            .countdown-card {
+                justify-content: center;
+            }
+            .countdown-item {
+                width: 120px;
+            }
+            .countdown-item.time {
+                /* 从300px减少50px → 250px */
+                width: 250px; 
+            }
+            .countdown-item.off-work {
+                width: 180px;
+            }
+            .countdown-number {
+                font-size: 2.5rem;
+            }
+            .countdown-item.time .countdown-number {
+                font-size: 2rem;
+            }
+            .countdown-item.off-work .countdown-number {
+                font-size: 1.8rem;
+            }
+            body::before {
+                font-size: 200px;
+                top: -30px;
+                right: -30px;
+            }
+            body::after {
+                font-size: 250px;
+                bottom: -60px;
+                left: -60px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="fortune"></div>
+    <div class="countdown-container">
+        <h1 id="countdownTitle">距离农历新年</h1>
+        <div class="year-info" id="yearInfo">2026年农历正月初一（2026年2月17日 00:00:00）</div>
+        
+        <!-- 目标日期输入区域 -->
+        <div class="target-date-section">
+            <label for="targetDate">🎯 目标日期：</label>
+            <input type="date" id="targetDate" value="2026-02-17">
+            <button class="reset-btn" id="resetBtn">重置为农历新年</button>
+        </div>
+        
+        <!-- 单休/双休切换选项 -->
+        <div class="mode-switch">
+            <label>
+                <input type="radio" name="workMode" value="single" checked> 单休
+            </label>
+            <label>
+                <input type="radio" name="workMode" value="double"> 双休
+            </label>
+        </div>
+        
+        <!-- 工作日统计（仅显示当日剩余时分秒） -->
+        <div class="countdown-card">
+            <div class="countdown-item">
+                <div class="countdown-number" id="totalDays">0</div>
+                <div class="countdown-label">总天数</div>
+            </div>
+            <div class="countdown-item">
+                <div class="countdown-number" id="workWeeks">0</div>
+                <div class="countdown-label" id="workWeekLabel">工作周（单休）</div>
+            </div>
+            <div class="countdown-item">
+                <div class="countdown-number" id="workDays">0</div>
+                <div class="countdown-label" id="workDayLabel">工作日（单休）</div>
+            </div>
+            <!-- 仅显示当日剩余时分秒的倒计时卡片 -->
+            <div class="countdown-item time">
+                <div class="countdown-number" id="timeCountdown" aria-label="距离农历新年当日剩余的时分秒">00:00:00</div>
+                <div class="countdown-label">当日剩余时间</div>
+            </div>
+        </div>
+
+        <!-- 新增：下班倒计时区域 -->
+        <div class="countdown-card">
+            <div class="countdown-item off-work">
+                <div class="countdown-number" id="morningOffWork">00:00:00</div>
+                <div class="countdown-label">上午下班 (12:00)</div>
+            </div>
+            <div class="countdown-item off-work">
+                <div class="countdown-number" id="afternoonOffWork">00:00:00</div>
+                <div class="countdown-label">下午下班 (19:00)</div>
+            </div>
+        </div>
+        
+        <div class="note">
+            💡 计算规则：<br>
+            1. 单休：周一至周六为工作日，周日休息；双休：周一至周五为工作日，周末休息<br>
+            2. 仅计算工作日，不包含法定节假日（需手动调整）<br>
+            3. 当天不计入工作日倒计时，时分秒仅展示距离新年当日剩余的时间（0-23:59:59）<br>
+            4. 下班倒计时：上午12点、下午19点，到达时间后显示✅
+        </div>
+        
+        <div class="update-time" id="updateTime"></div>
+    </div>
+
+    <script>
+        // 默认农历新年日期配置
+        const DEFAULT_NEW_YEAR = {
+            year: 2026,
+            month: 1,  // JavaScript月份从0开始，1表示2月
+            day: 17,
+            dateStr: '2026-02-17',
+            displayName: '2026年农历正月初一',
+            title: '距离农历新年'
+        };
+        
+        // localStorage 缓存键名
+        const STORAGE_KEY = 'countdown_target_date';
+        
+        // 从缓存读取日期，如果没有则使用默认值
+        function getStoredDate() {
+            try {
+                const stored = localStorage.getItem(STORAGE_KEY);
+                if (stored) {
+                    const [year, month, day] = stored.split('-').map(Number);
+                    // 验证日期有效性
+                    const date = new Date(year, month - 1, day, 0, 0, 0);
+                    if (!isNaN(date.getTime())) {
+                        return { dateStr: stored, date: date };
+                    }
+                }
+            } catch (e) {
+                console.warn('读取缓存日期失败:', e);
+            }
+            // 返回默认日期
+            return {
+                dateStr: DEFAULT_NEW_YEAR.dateStr,
+                date: new Date(DEFAULT_NEW_YEAR.year, DEFAULT_NEW_YEAR.month, DEFAULT_NEW_YEAR.day, 0, 0, 0)
+            };
+        }
+        
+        // 保存日期到缓存
+        function saveDate(dateStr) {
+            try {
+                localStorage.setItem(STORAGE_KEY, dateStr);
+            } catch (e) {
+                console.warn('保存日期到缓存失败:', e);
+            }
+        }
+        
+        // 清除缓存的日期
+        function clearStoredDate() {
+            try {
+                localStorage.removeItem(STORAGE_KEY);
+            } catch (e) {
+                console.warn('清除缓存日期失败:', e);
+            }
+        }
+        
+        // 从缓存初始化目标日期
+        const storedData = getStoredDate();
+        let newYearDate = storedData.date;
+        
+        // 更新标题和信息显示
+        function updateTitleAndInfo(dateObj, customTitle = null) {
+            const titleEl = document.getElementById('countdownTitle');
+            const infoEl = document.getElementById('yearInfo');
+            
+            // 格式化日期显示
+            const year = dateObj.getFullYear();
+            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const day = String(dateObj.getDate()).padStart(2, '0');
+            const dateDisplay = `${year}年${month}月${day}日 00:00:00`;
+            
+            // 判断是否为默认农历新年
+            const isDefaultDate = (
+                dateObj.getFullYear() === DEFAULT_NEW_YEAR.year &&
+                dateObj.getMonth() === DEFAULT_NEW_YEAR.month &&
+                dateObj.getDate() === DEFAULT_NEW_YEAR.day
+            );
+            
+            if (isDefaultDate) {
+                titleEl.textContent = DEFAULT_NEW_YEAR.title;
+                infoEl.textContent = `${DEFAULT_NEW_YEAR.displayName}（${dateDisplay}）`;
+            } else {
+                titleEl.textContent = customTitle || '距离目标日期';
+                infoEl.textContent = `目标日期（${dateDisplay}）`;
+            }
+        }
+        
+        // 处理目标日期变更
+        function handleTargetDateChange(e) {
+            const dateValue = e.target.value;
+            if (!dateValue) return;
+            
+            // 解析日期字符串 (YYYY-MM-DD)
+            const [year, month, day] = dateValue.split('-').map(Number);
+            newYearDate = new Date(year, month - 1, day, 0, 0, 0);
+            
+            // 保存到缓存
+            saveDate(dateValue);
+            
+            // 更新标题和信息
+            updateTitleAndInfo(newYearDate);
+            
+            // 重新计算倒计时
+            updateTimeCountdown();
+            const selectedMode = document.querySelector('input[name="workMode"]:checked').value;
+            calculateWorkDays(selectedMode);
+        }
+        
+        // 重置为默认农历新年
+        function resetToDefaultDate() {
+            const dateInput = document.getElementById('targetDate');
+            dateInput.value = DEFAULT_NEW_YEAR.dateStr;
+            
+            newYearDate = new Date(DEFAULT_NEW_YEAR.year, DEFAULT_NEW_YEAR.month, DEFAULT_NEW_YEAR.day, 0, 0, 0);
+            
+            // 清除缓存（恢复默认值时不需要保存）
+            clearStoredDate();
+            
+            // 更新标题和信息
+            updateTitleAndInfo(newYearDate);
+            
+            // 重新计算倒计时
+            updateTimeCountdown();
+            const selectedMode = document.querySelector('input[name="workMode"]:checked').value;
+            calculateWorkDays(selectedMode);
+        }
+        
+        // 更新页面显示时间
+        function updateDisplayTime() {
+            const now = new Date();
+            const timeStr = now.toLocaleString('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+            document.getElementById('updateTime').textContent = `数据更新时间：${timeStr}`;
+        }
+        
+        // 补零函数：确保数字是两位数（如 5 → 05）
+        function padZero(num) {
+            return num.toString().padStart(2, '0');
+        }
+        
+        // 仅显示当日剩余时分秒的倒计时核心函数
+        function updateTimeCountdown() {
+            const now = new Date();
+            const timeDiff = newYearDate - now;
+            const countdownEl = document.getElementById('timeCountdown');
+            
+            // 容错：如果元素不存在，直接返回
+            if (!countdownEl) {
+                console.warn('倒计时元素不存在');
+                return;
+            }
+            
+            // 如果新年已过，显示0并变灰
+            if (timeDiff <= 0) {
+                countdownEl.textContent = '00:00:00';
+                countdownEl.style.color = '#999';
+                return;
+            }
+            
+            // 重置颜色
+            countdownEl.style.color = '';
+            
+            // 核心：计算当日剩余秒数（总秒数 % 一天的总秒数86400）
+            const totalSeconds = Math.floor(timeDiff / 1000);
+            const remainingSecondsOfDay = totalSeconds % 86400; // 86400 = 24*60*60
+            
+            // 基于当日剩余秒数换算时分秒
+            const hours = Math.floor(remainingSecondsOfDay / 3600);
+            const minutes = Math.floor((remainingSecondsOfDay % 3600) / 60);
+            const seconds = remainingSecondsOfDay % 60;
+            
+            // 拼接成 时:分:秒 格式（范围00:00:00 ~ 23:59:59）
+            const timeStr = `${padZero(hours)}:${padZero(minutes)}:${padZero(seconds)}`;
+            countdownEl.textContent = timeStr;
+        }
+        
+        // 计算工作日的核心函数
+        function calculateWorkDays(mode = 'single') {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            const newYear = new Date(newYearDate);
+            newYear.setHours(0, 0, 0, 0);
+            
+            // 计算总天数
+            const timeDiff = newYear - today;
+            const totalDays = Math.max(0, Math.ceil(timeDiff / (1000 * 60 * 60 * 24)));
+            
+            let workDays = 0;
+            let currentDate = new Date(today);
+            let workDaysPerWeek = 6; // 默认单休每周工作6天
+            
+            // 遍历每一天，根据模式计算工作日
+            for (let i = 1; i <= totalDays; i++) {
+                currentDate.setDate(currentDate.getDate() + 1);
+                const dayOfWeek = currentDate.getDay(); // 0=周日,1-6=周一到周六
+                
+                if (mode === 'single') {
+                    // 单休规则：周日休息
+                    if (dayOfWeek !== 0) {
+                        workDays++;
+                    }
+                } else if (mode === 'double') {
+                    // 双休规则：周六、周日休息
+                    workDaysPerWeek = 5;
+                    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+                        workDays++;
+                    }
+                }
+            }
+            
+            // 计算工作周数（取整）
+            const workWeeks = Math.floor(workDays / workDaysPerWeek);
+            
+            // 更新页面显示
+            document.getElementById('workDays').textContent = workDays;
+            document.getElementById('totalDays').textContent = totalDays;
+            document.getElementById('workWeeks').textContent = workWeeks;
+            
+            // 更新标签文字
+            document.getElementById('workDayLabel').textContent = `工作日（${mode === 'single' ? '单休' : '双休'}）`;
+            document.getElementById('workWeekLabel').textContent = `工作周（${mode === 'single' ? '单休' : '双休'}）`;
+            
+            updateDisplayTime();
+        }
+
+        // ========== 新增：下班倒计时功能 ==========
+        // 计算到指定小时的倒计时
+        function calculateOffWorkCountdown(targetHour) {
+            const now = new Date();
+            // 创建目标时间（今天的指定小时）
+            const target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), targetHour, 0, 0);
+            
+            // 如果当前时间已过目标时间，返回0
+            if (now > target) {
+                return { hours: 0, minutes: 0, seconds: 0 };
+            }
+
+            // 计算时间差（毫秒）
+            const diff = target - now;
+            // 转换为小时、分钟、秒
+            const hours = Math.floor(diff / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+            return { hours, minutes, seconds };
+        }
+
+        // 更新下班倒计时显示
+        function updateOffWorkCountdowns() {
+            // 上午下班倒计时（12点）
+            const morningEl = document.getElementById('morningOffWork');
+            const morningTime = calculateOffWorkCountdown(12);
+            
+            // 下午下班倒计时（19点）
+            const afternoonEl = document.getElementById('afternoonOffWork');
+            const afternoonTime = calculateOffWorkCountdown(19);
+
+            // 更新上午下班显示
+            if (morningTime.hours === 0 && morningTime.minutes === 0 && morningTime.seconds === 0) {
+                morningEl.textContent = '✅';
+                morningEl.classList.add('finished');
+            } else {
+                morningEl.textContent = `${padZero(morningTime.hours)}:${padZero(morningTime.minutes)}:${padZero(morningTime.seconds)}`;
+                morningEl.classList.remove('finished');
+            }
+
+            // 更新下午下班显示
+            if (afternoonTime.hours === 0 && afternoonTime.minutes === 0 && afternoonTime.seconds === 0) {
+                afternoonEl.textContent = '✅';
+                afternoonEl.classList.add('finished');
+            } else {
+                afternoonEl.textContent = `${padZero(afternoonTime.hours)}:${padZero(afternoonTime.minutes)}:${padZero(afternoonTime.seconds)}`;
+                afternoonEl.classList.remove('finished');
+            }
+        }
+        
+        // 初始化：从缓存恢复日期设置
+        function initFromCache() {
+            const dateInput = document.getElementById('targetDate');
+            // 设置输入框的值为缓存中的日期
+            dateInput.value = storedData.dateStr;
+            // 更新标题和信息显示
+            updateTitleAndInfo(newYearDate);
+        }
+        
+        // 初始化
+        initFromCache(); // 从缓存恢复日期设置
+        updateTimeCountdown(); // 初始化当日剩余时分秒倒计时
+        calculateWorkDays();   // 初始化工作日计算
+        updateOffWorkCountdowns(); // 初始化下班倒计时
+        
+        // 每秒更新所有倒计时
+        setInterval(() => {
+            updateTimeCountdown();
+            updateOffWorkCountdowns();
+        }, 1000);
+        
+        // 监听模式切换事件
+        const modeRadios = document.querySelectorAll('input[name="workMode"]');
+        modeRadios.forEach(radio => {
+            radio.addEventListener('change', function() {
+                calculateWorkDays(this.value);
+            });
+        });
+        
+        // 监听目标日期输入变化
+        document.getElementById('targetDate').addEventListener('change', handleTargetDateChange);
+        
+        // 监听重置按钮点击
+        document.getElementById('resetBtn').addEventListener('click', resetToDefaultDate);
+        
+        // 每分钟更新一次工作日计算（避免过于频繁）
+        setInterval(() => {
+            const selectedMode = document.querySelector('input[name="workMode"]:checked').value;
+            calculateWorkDays(selectedMode);
+        }, 60000);
+    </script>
+</body>
+</html>
