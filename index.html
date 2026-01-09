@@ -184,6 +184,69 @@
             border-color: #dc143c;
         }
         
+        /* 上下班时间设置区域样式 */
+        .off-work-settings {
+            margin-bottom: 25px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .time-input-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .time-input-group label {
+            color: #2e8b57;
+            font-size: 1rem;
+            font-weight: 500;
+        }
+        
+        .time-input-group input[type="time"] {
+            padding: 8px 12px;
+            font-size: 1rem;
+            border: 2px solid rgba(0, 128, 0, 0.3);
+            border-radius: 8px;
+            background: linear-gradient(180deg, #f0fff8 0%, #e6fff0 100%);
+            color: #2e8b57;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .time-input-group input[type="time"]:hover {
+            border-color: #2e8b57;
+            box-shadow: 0 2px 8px rgba(46, 139, 87, 0.2);
+        }
+        
+        .time-input-group input[type="time"]:focus {
+            outline: none;
+            border-color: #27ae60;
+            box-shadow: 0 2px 12px rgba(39, 174, 96, 0.25);
+        }
+        
+        .reset-time-btn {
+            padding: 8px 14px;
+            font-size: 0.9rem;
+            border: 2px solid rgba(46, 139, 87, 0.3);
+            border-radius: 8px;
+            background: linear-gradient(180deg, #e6fff0 0%, #d0f5e0 100%);
+            color: #2e8b57;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .reset-time-btn:hover {
+            background: linear-gradient(180deg, #2e8b57 0%, #228b22 100%);
+            color: #fff;
+            border-color: #2e8b57;
+        }
+        
         .countdown-card {
             display: flex;
             justify-content: space-around;
@@ -362,19 +425,32 @@
             <!-- 仅显示当日剩余时分秒的倒计时卡片 -->
             <div class="countdown-item time">
                 <div class="countdown-number" id="timeCountdown" aria-label="距离农历新年当日剩余的时分秒">00:00:00</div>
-                <div class="countdown-label">当日剩余时间</div>
+                <div class="countdown-label">今天剩余</div>
             </div>
         </div>
 
-        <!-- 新增：下班倒计时区域 -->
+        <!-- 上下班时间设置区域 -->
+        <div class="off-work-settings">
+            <div class="time-input-group">
+                <label for="morningTime">🌅 上午下班：</label>
+                <input type="time" id="morningTime" value="12:00">
+            </div>
+            <div class="time-input-group">
+                <label for="afternoonTime">🌆 下午下班：</label>
+                <input type="time" id="afternoonTime" value="19:00">
+            </div>
+            <button class="reset-time-btn" id="resetTimeBtn">重置默认时间</button>
+        </div>
+
+        <!-- 下班倒计时区域 -->
         <div class="countdown-card">
             <div class="countdown-item off-work">
                 <div class="countdown-number" id="morningOffWork">00:00:00</div>
-                <div class="countdown-label">上午下班 (12:00)</div>
+                <div class="countdown-label" id="morningLabel">上午下班 (12:00)</div>
             </div>
             <div class="countdown-item off-work">
                 <div class="countdown-number" id="afternoonOffWork">00:00:00</div>
-                <div class="countdown-label">下午下班 (19:00)</div>
+                <div class="countdown-label" id="afternoonLabel">下午下班 (19:00)</div>
             </div>
         </div>
         
@@ -383,7 +459,6 @@
             1. 单休：周一至周六为工作日，周日休息；双休：周一至周五为工作日，周末休息<br>
             2. 仅计算工作日，不包含法定节假日（需手动调整）<br>
             3. 当天不计入工作日倒计时，时分秒仅展示距离新年当日剩余的时间（0-23:59:59）<br>
-            4. 下班倒计时：上午12点、下午19点，到达时间后显示✅
         </div>
         
         <div class="update-time" id="updateTime"></div>
@@ -402,6 +477,14 @@
         
         // localStorage 缓存键名
         const STORAGE_KEY = 'countdown_target_date';
+        const STORAGE_KEY_MORNING = 'countdown_morning_time';
+        const STORAGE_KEY_AFTERNOON = 'countdown_afternoon_time';
+        
+        // 默认上下班时间配置
+        const DEFAULT_TIMES = {
+            morning: '12:00',
+            afternoon: '19:00'
+        };
         
         // 从缓存读取日期，如果没有则使用默认值
         function getStoredDate() {
@@ -443,9 +526,52 @@
             }
         }
         
+        // ========== 上下班时间缓存相关函数 ==========
+        // 从缓存读取上下班时间
+        function getStoredTimes() {
+            try {
+                const morning = localStorage.getItem(STORAGE_KEY_MORNING) || DEFAULT_TIMES.morning;
+                const afternoon = localStorage.getItem(STORAGE_KEY_AFTERNOON) || DEFAULT_TIMES.afternoon;
+                return { morning, afternoon };
+            } catch (e) {
+                console.warn('读取缓存时间失败:', e);
+                return { ...DEFAULT_TIMES };
+            }
+        }
+        
+        // 保存上下班时间到缓存
+        function saveTime(key, timeStr) {
+            try {
+                localStorage.setItem(key, timeStr);
+            } catch (e) {
+                console.warn('保存时间到缓存失败:', e);
+            }
+        }
+        
+        // 清除缓存的上下班时间
+        function clearStoredTimes() {
+            try {
+                localStorage.removeItem(STORAGE_KEY_MORNING);
+                localStorage.removeItem(STORAGE_KEY_AFTERNOON);
+            } catch (e) {
+                console.warn('清除缓存时间失败:', e);
+            }
+        }
+        
+        // 解析时间字符串为小时和分钟
+        function parseTime(timeStr) {
+            const [hours, minutes] = timeStr.split(':').map(Number);
+            return { hours, minutes };
+        }
+        
         // 从缓存初始化目标日期
         const storedData = getStoredDate();
         let newYearDate = storedData.date;
+        
+        // 从缓存初始化上下班时间
+        const storedTimes = getStoredTimes();
+        let morningTime = storedTimes.morning;
+        let afternoonTime = storedTimes.afternoon;
         
         // 更新标题和信息显示
         function updateTitleAndInfo(dateObj, customTitle = null) {
@@ -619,12 +745,12 @@
             updateDisplayTime();
         }
 
-        // ========== 新增：下班倒计时功能 ==========
-        // 计算到指定小时的倒计时
-        function calculateOffWorkCountdown(targetHour) {
+        // ========== 下班倒计时功能 ==========
+        // 计算到指定时间的倒计时（支持小时和分钟）
+        function calculateOffWorkCountdown(targetHour, targetMinute = 0) {
             const now = new Date();
-            // 创建目标时间（今天的指定小时）
-            const target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), targetHour, 0, 0);
+            // 创建目标时间（今天的指定时间）
+            const target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), targetHour, targetMinute, 0);
             
             // 如果当前时间已过目标时间，返回0
             if (now > target) {
@@ -641,33 +767,80 @@
             return { hours, minutes, seconds };
         }
 
+        // 更新下班标签显示
+        function updateOffWorkLabels() {
+            document.getElementById('morningLabel').textContent = `上午下班 (${morningTime})`;
+            document.getElementById('afternoonLabel').textContent = `下午下班 (${afternoonTime})`;
+        }
+
         // 更新下班倒计时显示
         function updateOffWorkCountdowns() {
-            // 上午下班倒计时（12点）
+            // 解析上午下班时间
+            const morningParsed = parseTime(morningTime);
             const morningEl = document.getElementById('morningOffWork');
-            const morningTime = calculateOffWorkCountdown(12);
+            const morningCountdown = calculateOffWorkCountdown(morningParsed.hours, morningParsed.minutes);
             
-            // 下午下班倒计时（19点）
+            // 解析下午下班时间
+            const afternoonParsed = parseTime(afternoonTime);
             const afternoonEl = document.getElementById('afternoonOffWork');
-            const afternoonTime = calculateOffWorkCountdown(19);
+            const afternoonCountdown = calculateOffWorkCountdown(afternoonParsed.hours, afternoonParsed.minutes);
 
             // 更新上午下班显示
-            if (morningTime.hours === 0 && morningTime.minutes === 0 && morningTime.seconds === 0) {
+            if (morningCountdown.hours === 0 && morningCountdown.minutes === 0 && morningCountdown.seconds === 0) {
                 morningEl.textContent = '✅';
                 morningEl.classList.add('finished');
             } else {
-                morningEl.textContent = `${padZero(morningTime.hours)}:${padZero(morningTime.minutes)}:${padZero(morningTime.seconds)}`;
+                morningEl.textContent = `${padZero(morningCountdown.hours)}:${padZero(morningCountdown.minutes)}:${padZero(morningCountdown.seconds)}`;
                 morningEl.classList.remove('finished');
             }
 
             // 更新下午下班显示
-            if (afternoonTime.hours === 0 && afternoonTime.minutes === 0 && afternoonTime.seconds === 0) {
+            if (afternoonCountdown.hours === 0 && afternoonCountdown.minutes === 0 && afternoonCountdown.seconds === 0) {
                 afternoonEl.textContent = '✅';
                 afternoonEl.classList.add('finished');
             } else {
-                afternoonEl.textContent = `${padZero(afternoonTime.hours)}:${padZero(afternoonTime.minutes)}:${padZero(afternoonTime.seconds)}`;
+                afternoonEl.textContent = `${padZero(afternoonCountdown.hours)}:${padZero(afternoonCountdown.minutes)}:${padZero(afternoonCountdown.seconds)}`;
                 afternoonEl.classList.remove('finished');
             }
+        }
+        
+        // 处理上午下班时间变更
+        function handleMorningTimeChange(e) {
+            const timeValue = e.target.value;
+            if (!timeValue) return;
+            
+            morningTime = timeValue;
+            saveTime(STORAGE_KEY_MORNING, timeValue);
+            updateOffWorkLabels();
+            updateOffWorkCountdowns();
+        }
+        
+        // 处理下午下班时间变更
+        function handleAfternoonTimeChange(e) {
+            const timeValue = e.target.value;
+            if (!timeValue) return;
+            
+            afternoonTime = timeValue;
+            saveTime(STORAGE_KEY_AFTERNOON, timeValue);
+            updateOffWorkLabels();
+            updateOffWorkCountdowns();
+        }
+        
+        // 重置上下班时间为默认值
+        function resetToDefaultTimes() {
+            morningTime = DEFAULT_TIMES.morning;
+            afternoonTime = DEFAULT_TIMES.afternoon;
+            
+            // 更新输入框
+            document.getElementById('morningTime').value = DEFAULT_TIMES.morning;
+            document.getElementById('afternoonTime').value = DEFAULT_TIMES.afternoon;
+            
+            // 清除缓存
+            clearStoredTimes();
+            
+            // 更新显示
+            updateOffWorkLabels();
+            updateOffWorkCountdowns();
         }
         
         // 初始化：从缓存恢复日期设置
@@ -679,8 +852,16 @@
             updateTitleAndInfo(newYearDate);
         }
         
+        // 初始化：从缓存恢复上下班时间设置
+        function initTimesFromCache() {
+            document.getElementById('morningTime').value = morningTime;
+            document.getElementById('afternoonTime').value = afternoonTime;
+            updateOffWorkLabels();
+        }
+        
         // 初始化
         initFromCache(); // 从缓存恢复日期设置
+        initTimesFromCache(); // 从缓存恢复上下班时间设置
         updateTimeCountdown(); // 初始化当日剩余时分秒倒计时
         calculateWorkDays();   // 初始化工作日计算
         updateOffWorkCountdowns(); // 初始化下班倒计时
@@ -704,6 +885,13 @@
         
         // 监听重置按钮点击
         document.getElementById('resetBtn').addEventListener('click', resetToDefaultDate);
+        
+        // 监听上下班时间输入变化
+        document.getElementById('morningTime').addEventListener('change', handleMorningTimeChange);
+        document.getElementById('afternoonTime').addEventListener('change', handleAfternoonTimeChange);
+        
+        // 监听重置时间按钮点击
+        document.getElementById('resetTimeBtn').addEventListener('click', resetToDefaultTimes);
         
         // 每分钟更新一次工作日计算（避免过于频繁）
         setInterval(() => {
